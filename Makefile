@@ -1,4 +1,4 @@
-rubix.exe: rubix.opa
+rubix.exe: rubix.opa resources/*
 	opa --parser js-like $<
 
 clean::

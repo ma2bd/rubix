@@ -1,3 +1,6 @@
+import stdlib.themes.bootstrap
+import stdlib.widgets.bootstrap
+
 /** Rubix elementary moves */
 
 type Face.t = {top}
@@ -34,7 +37,7 @@ simple_moves = [
 ]  
 
 function mod4(x) {
-  if (x >= 0) { mod(x, 4) } else { 3 - mod(-x, 4) }
+  if (x >= 0) { mod(x, 4) } else { 4 - mod(-x, 4) }
 }
 
 function Move.t power(Move.t {~f, ~i}, int n) {
@@ -49,6 +52,18 @@ function inverse(Move.t m) {
   power(m, -1)
 }
 
+function random_simple() {
+  list_pick_random(simple_moves)
+}
+
+function to_string(Move.t {~f, ~i}) {
+  Face.to_short_string(f)^(if (i != 1) "^{i}" else "")
+}
+
+function to_html(Move.t {~f, ~i}) {
+  <>{Face.to_short_string(f)}{if (i != 1) <sup>{i}</sup> else <></>}</>
+}
+
 }
 
 type Formula.t = list(Move.t)
@@ -56,16 +71,18 @@ type Formula.t = list(Move.t)
 
 module Formula {
 
+Formula.t empty = []
+
 // add a move first, with normalization
-function add_first(Move.t m, Formula.t x) {
-  match ((m, x)) {
+function add_first(Move.t m0, Formula.t x) {
+  match ((Move.normalize(m0), x)) {
     case ({f:_, i:0}, x): x
 
     case (m, []): [m]
 
-    case ({~f, ~i}, [{f:g, i:j} | y]): if (f==g) { add_first({~f, i:(i+j)}, y) } else {  [Move.normalize(m) | x] }
+    case ({~f, ~i} as m, [{f:g, i:j} | y]): if (f==g) { add_first({~f, i:(i+j)}, y) } else {  [m | x] }
 
-    case (m, x): [Move.normalize(m) | x]
+    case (m, x): [m | x]
   }
 }
 
@@ -82,13 +99,70 @@ function inverse(Formula.t x) {
   List.rev_map(Move.inverse, x)
 }
 
+function rev_compose(Formula.t x, Formula.t y) {
+  List.fold(add_first, x, y)
+}
+
 function compose(Formula.t x, Formula.t y) {
-  List.fold(add_first, List.rev(x), y)
+  rev_compose(List.rev(x), y)
+}
+
+// TODO should be local
+  function random_aux(acc, n) {
+    if (n<=0) acc
+    else random_aux(add_first(Move.random_simple(), acc), n-1)
+  }
+
+
+function random(n) {
+  random_aux(empty, n)
+}
+
+function to_html(Formula.t f) {
+  <span class=formula>{if (f == empty) {[<>&empty;</>]} else {List.map(Move.to_html, f)}}</span>
 }
 
 }
 
 module Face {
+
+  function to_string(Face.t f) {
+    match(f) {
+      case {top}: "top"
+      case {bottom}: "bottom"
+      case {front}: "front"
+      case {rear}: "rear"
+      case {left}: "left"
+      case {right}: "right"
+    }
+  }
+
+  function to_short_string(Face.t f) {
+    match(f) {
+      case {top}: "t"
+      case {bottom}: "b"
+      case {front}: "f"
+      case {rear}: "k" //back
+      case {left}: "l"
+      case {right}: "r"
+    }
+  }
+
+  function to_color(Face.t f) {
+    match(f) {
+      case {top}: Color.red
+      case {bottom}: Color.orange
+      case {front}: Color.blue
+      case {rear}: Color.green
+      case {left}: Color.yellow
+      case {right}: Color.white
+    }
+  }
+
+function to_Css_background(Face.t f) {
+  Css_build.background_color(to_color(f))
+}
+
 
 function Face.t apply_elementary_move(Face.t f, Face.t m) {
   match ((m, f)) { // move, face
@@ -139,41 +213,57 @@ function Face.t apply_move(Face.t f, Move.t {f:fm, ~i}) {
 
 }
 
-type Vertex.loc = (Face.t, Face.t, Face.t)
+type Vertex.t = (Face.t, Face.t, Face.t)
 
 module Vertex {
 
-function Vertex.loc apply_move(Vertex.loc (f1, f2, f3) as loc, Move.t m) {
+function Vertex.t apply_move(Vertex.t (f1, f2, f3) as v, Move.t m) {
   if (m.f == f1 || m.f == f2 || m.f == f3) {
     (Face.apply_move(f1, m), Face.apply_move(f2, m), Face.apply_move(f3, m))
-  } else loc
+  } else v
 }
 
-function distance(Vertex.loc (f11, f12, f13) as v1, Vertex.loc (f21, f22, f23) as v2) {
+function distance(Vertex.t (f11, f12, f13) as v1, Vertex.t (f21, f22, f23) as v2) {
   if (v1 == v2) { 0 }
   else { 1 + list_distance(List.sort([f11,f12,f13]), List.sort([f21,f22,f23])) }
 }
 
+function name_to_html(Vertex.t (f1, f2, f3)) {
+   <span>{Face.to_string(f1)}, {Face.to_string(f2)}, {Face.to_string(f3)}</span>
 }
 
-type Edge.loc = (Face.t, Face.t)
+function color_to_html(Vertex.t (f1, f2, f3)) {
+   <><span class="square" style="background:{Face.to_Css_background(f1)}"/><span class="square" style="background:{Face.to_Css_background(f2)}"/><span class="square" style="background:{Face.to_Css_background(f3)}"/></>
+}
+
+}
+
+type Edge.t = (Face.t, Face.t)
 
 module Edge {
 
-function Edge.loc apply_move(Edge.loc (f1, f2) as loc, Move.t m) {
+function Edge.t apply_move(Edge.t (f1, f2) as e, Move.t m) {
   if (m.f == f1 || m.f == f2) {
     (Face.apply_move(f1, m), Face.apply_move(f2, m))
-  } else loc
+  } else e
 }
 
-function distance(Edge.loc (f11, f12) as e1, Edge.loc (f21, f22) as e2) {
+function distance(Edge.t (f11, f12) as e1, Edge.t (f21, f22) as e2) {
   if (e1 == e2) { 0 }
   else { 1 + list_distance(List.sort([f11,f12]), List.sort([f21,f22])) }
 }
 
+function name_to_html(Edge.t (f1, f2)) {
+   <span>{Face.to_string(f1)}, {Face.to_string(f2)}</span>
 }
 
-type Cube.state = { intmap(Vertex.loc) vertices, intmap(Edge.loc) edges}
+function color_to_html(Edge.t (f1, f2)) {
+   <><span class="square" style="background:{Face.to_Css_background(f1)}"/><span class="square" style="background:{Face.to_Css_background(f2)}"/></>
+}
+
+}
+
+type Cube.t = { intmap(Vertex.t) vertices, intmap(Edge.t) edges}
 
 module Cube {
 
@@ -213,46 +303,141 @@ initial =
     edges: list_to_intmap([ e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12 ])
   }
 
-function apply_move(Cube.state cube, Move.t move) {
+function apply_move(Cube.t cube, Move.t move) {
   { vertices: Map.map(Vertex.apply_move(_, move), cube.vertices),
     edges: Map.map(Edge.apply_move(_, move), cube.edges),
   }
 }
 
-function vertex_distance(Cube.state cube1, Cube.state cube2) {
-  Map.fold(function(i, v, n) {
-    n + Vertex.distance(v,
-          match(Map.get(i, cube2.vertices)) { //TODO: use some Map.fold2
-            case {none}: error("Invalid cube state")
-            case {~some}:some
-         })}, cube1.vertices, 0)
+function apply_formula(Cube.t cube, Formula.t f) {
+  List.fold(function(m,c) { apply_move(c,m) }, f, cube)
 }
 
-function edge_distance(Cube.state cube1, Cube.state cube2) {
-  Map.fold(function(i, v, n) {
-    n + Edge.distance(v,
-          match(Map.get(i, cube2.edges)) { //TODO: use some Map.fold2
-            case {none}: error("Invalid cube state")
-            case {~some}:some
-         })}, cube1.edges, 0)
+function get_vertex(Cube.t cube, i) {
+   if (i < 1 || i > 8) error("Invalid vertex number");
+   match(Map.get(i, cube.vertices)) {
+     case {none}: error("Invalid cube state")
+     case {~some}:some
+   }
 }
 
-function distance(Cube.state cube1, Cube.state cube2) {
+function get_edge(Cube.t cube, i) {
+   if (i < 1 || i > 12) error("Invalid edge number");
+   match(Map.get(i, cube.edges)) {
+     case {none}: error("Invalid cube state")
+     case {~some}:some
+   }
+}
+
+function vertex_distance(Cube.t cube1, Cube.t cube2) {
+  Map.fold(   //TODO: use some Map.fold2
+    function(i, v, n) {
+       n + Vertex.distance(v, get_vertex(cube2, i))
+    }, cube1.vertices, 0)
+}
+
+function edge_distance(Cube.t cube1, Cube.t cube2) {
+  Map.fold(   //TODO: use some Map.fold2
+    function(i, v, n) {
+       n + Edge.distance(v, get_edge(cube2, i))
+    }, cube1.edges, 0)
+}
+
+function distance(Cube.t cube1, Cube.t cube2) {
   vertex_distance(cube1, cube2) + edge_distance(cube1, cube2)
 }
 
+function to_html(Cube.t cube) {
+  <div>
+    {if (cube == initial) WBootstrap.Label.make("Solved", {success}) else WBootstrap.Label.make("Scrambled: {Cube.distance(initial, cube)}", {important})}
+    <h2>Vertices</h2>
+    <table>
+    {List.rev(Map.fold(function(i, v, list(xhtml) lh) {
+        [ <tr><td>{i}</td><td>{Vertex.color_to_html(get_vertex(initial,i))}</td><td>{Vertex.name_to_html(v)}</td></tr> | lh]}, cube.vertices, []))}
+    </table>
+    <h2>Edges</h2>
+    <table>
+    {List.rev(Map.fold(function(i, e, list(xhtml) lh) {
+        [ <tr><td>{i}</td><td>{Edge.color_to_html(get_edge(initial,i))}</td><td>{Edge.name_to_html(e)}</td></tr> | lh]}, cube.edges, []))}
+    </table>
+  </div>
+}
+
 }
 
 
 
-// library
+/* --- library --- */
 
 function list_to_intmap(l) {
   n = List.length(l);
-  List.foldi(function(i,x,m){ Map.add(n-i+1, x, m) }, l, Map.empty)
+  List.foldi(function(i,x,m){ Map.add(n-i, x, m) }, l, Map.empty)
 }
 
 //caution: assume list of equal length
 function list_distance(l1, l2) {
   List.fold2(function(x, y, n) { if (x==y) n else n+1 }, l1, l2, 0)
 }
+
+function list_pick_random(l) {
+  n = List.length(l);
+  i = Random.int(n);
+  List.unsafe_nth(i, l)
+}
+
+/* ---- */
+
+client module Display {
+
+  cube = Reference.create(Cube.initial)
+
+  history = Reference.create(Formula.empty) // reversed formula
+  
+//  container_id = #display
+
+  function install() {
+    function mkcmd(m) {
+      WBootstrap.Button.make({button: Move.to_html(m), callback:function(_){apply_move(m)}}, [])
+    }
+    refresh();
+    #commands = <div>{List.map(mkcmd, Move.simple_moves)}</div> 
+  }
+
+  function refresh() {
+    #cube = Cube.to_html(Reference.get(cube));
+    #history = Formula.to_html(List.rev(Reference.get(history)))
+  }
+
+  function apply_move(m) {
+    Reference.update(cube, Cube.apply_move(_, m))
+    Reference.update(history, Formula.add_first(m, _))
+    refresh()
+  }
+
+  function apply_formula(f) {
+    Reference.update(cube, Cube.apply_formula(_, f))
+    Reference.update(history, Formula.rev_compose(f, _))
+    refresh()
+  }
+}
+
+function page() {
+   WBootstrap.Layout.fixed(
+      <div onready={function(_){Display.install()}}>
+      <h1>My cube</h1>
+      <div id=cube />
+      <h2>History</h2>
+      <div id=history/>
+      <h2>Commands</h2>
+      <div id=commands />
+      </div>
+   )
+}
+
+Server.start(
+  Server.http,
+  [ {resources: @static_resource_directory("resources")}
+  , {register: ["resources/rubix.css"]}
+  , {title: "Opa rubix", page:page }
+  ]
+)
