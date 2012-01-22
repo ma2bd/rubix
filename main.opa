@@ -44,7 +44,7 @@ client module Display {
       function fid(n) { facelet_id({~f, ~n}) }
       function td(n) { <td class=square id={fid(n)}>{Facelet.to_string({~f, ~n})}</td> }
       <h3>{Face.to_string(f)}</h3>
-      <table>
+      <table onclick={function(_) { CubeState.apply_move({~f, i:1}) }}>
         <tr>{list(xhtml) [td(1), td(2), td(3)]}</tr>
         <tr>{list(xhtml) [td(4), td(5), td(6)]}</tr>
         <tr>{list(xhtml) [td(7), td(8), td(9)]}</tr>
@@ -65,6 +65,7 @@ client module Display {
 ])}
   {WBootstrap.Grid.row([{span:3, offset:some(3), content:mkface({down})}])}
        </div>
+    // last color the center facelets
     List.iter(function(f) { set_facelet_color({~f, n:5}, f)}, Face.all)
   }
 
