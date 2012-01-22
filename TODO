@@ -1,0 +1,13 @@
+= TODO =
+
+- add a view switch
+- make facelet view look like http://kociemba.org/cube.htm ?
+- create a 3D view
+
+- save/reload/import/export configuration (=cube state)
+
+- history may start with ? = random state
+- new command: scramble => "?"
+- take formulas as input (ex: bfk3l-1)
+
+- create an interactive solver
