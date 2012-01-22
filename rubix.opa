@@ -126,6 +126,8 @@ function to_html(Formula.t f) {
 
 module Face {
 
+  all = [{up}, {down}, {front}, {back}, {left}, {right}]
+
   function to_string(Face.t f) {
     match(f) {
       case {up}: "Up"
@@ -378,9 +380,9 @@ function distance(Cube.t cube1, Cube.t cube2) {
 
 max_distance = max_corner_distance + max_edge_distance
 
-function to_html(Cube.t cube) {
+function cubies_to_html(Cube.t cube) {
   <div>
-    {if (cube == initial) WBootstrap.Label.make("Solved", {success}) else WBootstrap.Label.make("Scrambled: {Cube.distance(initial, cube)}", {important})}
+    {if (cube == initial) WBootstrap.Label.make("Solved", {success}) else WBootstrap.Label.make("Scrambled: {Cube.distance(initial, cube)}/{Cube.max_distance}", {important})}
     <h2>Corners</h2>
     <table>
     {List.rev(Map.fold(function(i, v, list(xhtml) lh) {
@@ -409,9 +411,9 @@ numbers =
   v1 = (9, 1, 3) //({up}, {right}, {front})
   v2 = (7, 1, 3) //({up}, {front}, {left})
   v3 = (1, 3, 3) //({back}, {right}, {up})
-  v4 = (3, 1, 3) //({back}, {up}, {left})
+  v4 = (3, 1, 1) //({back}, {up}, {left})
   v5 = (9, 9, 7) //({down}, {right}, {back})
-  v6 = (7, 7, 9) //({down}, {back}, {left})
+  v6 = (7, 9, 7) //({down}, {back}, {left})
   v7 = (9, 7, 3) //({front}, {right}, {down})
   v8 = (7, 1, 9) //({front}, {down}, {left})
 
@@ -451,12 +453,21 @@ Facelet.maps maps =
       }, Cube.initial.edges, Map.empty)
   { ~corners, ~edges }
 
-function corner(Corner.t c) {
+function corner_numbers(Corner.t c) {
   map_unsafe_get(c, maps.corners, "Invalid corner map")
 }
 
-function edge(Edge.t e) {
+function edge_numbers(Edge.t e) {
   map_unsafe_get(e, maps.edges, "Invalid edge map")
+}
+
+nums = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+list(Facelet.t) all =
+  List.fold(function(f, l) { List.fold(function(n, l2) {[{~f, ~n} | l2]}, nums, l) }, Face.all, [])
+
+function to_string(Facelet.t {~f, ~n}) {
+  Face.to_short_string(f)^"{n}"
 }
 
 }
@@ -497,28 +508,65 @@ client module Display {
   
 //  container_id = #display
 
+  function facelet_id(fc) {
+    "id_"^(Facelet.to_string(fc))
+  }
+
+  function set_facelet_color(f, c) {
+    Dom.set_style(Dom.select_id(facelet_id(f)), [{background:Face.to_Css_background(c)}])
+  }
+
   function install() {
     function mkcmd(m) {
       WBootstrap.Button.make({button: Move.to_html(m), callback:function(_){apply_move(m)}}, [])
     }
+    function mkface(f) {    // TODO use a table ?
+      function fid(n) { facelet_id({~f, ~n}) }
+      function td(n) { <td class=square id={fid(n)}></td> }
+      <h3>{Face.to_string(f)}</h3>
+      <table>
+        <tr>{list(xhtml) [td(1), td(2), td(3)]}</tr>
+        <tr>{list(xhtml) [td(4), td(5), td(6)]}</tr>
+        <tr>{list(xhtml) [td(7), td(8), td(9)]}</tr>
+      </table>
+    }
+    #commands = <div>{List.map(mkcmd, Move.simple_moves)}</div>
+    #facelets = <div>{List.map(mkface, Face.all)}</div>
     refresh();
-    #commands = <div>{List.map(mkcmd, Move.simple_moves)}</div> 
+    List.iter(function(f) { set_facelet_color({~f, n:5}, f)}, Face.all)
+  }
+
+  function refresh_corner_facelets(int i, Corner.t (f1,f2,f3) as c) {
+    (n1, n2, n3) = Facelet.corner_numbers(c)
+    (c1, c2, c3) = Cube.get_corner(Cube.initial, i)
+    set_facelet_color({f:f1, n:n1}, c1);
+    set_facelet_color({f:f2, n:n2}, c2);
+    set_facelet_color({f:f3, n:n3}, c3);
+  }
+
+  function refresh_edge_facelets(int i, Edge.t (f1,f2) as e) {
+    (n1, n2) = Facelet.edge_numbers(e)
+    (c1, c2) = Cube.get_edge(Cube.initial, i)
+    set_facelet_color({f:f1, n:n1}, c1);
+    set_facelet_color({f:f2, n:n2}, c2);
   }
 
   function refresh() {
-    #cube = Cube.to_html(Reference.get(cube));
+    #cubies = Cube.cubies_to_html(Reference.get(cube));
+    Map.iter(refresh_corner_facelets, Reference.get(cube).corners);
+    Map.iter(refresh_edge_facelets, Reference.get(cube).edges);
     #history = Formula.to_html(List.rev(Reference.get(history)))
   }
 
   function apply_move(m) {
-    Reference.update(cube, Cube.apply_move(_, m))
-    Reference.update(history, Formula.add_first(m, _))
+    Reference.update(cube, Cube.apply_move(_, m));
+    Reference.update(history, Formula.add_first(m, _));
     refresh()
   }
 
   function apply_formula(f) {
-    Reference.update(cube, Cube.apply_formula(_, f))
-    Reference.update(history, Formula.rev_compose(f, _))
+    Reference.update(cube, Cube.apply_formula(_, f));
+    Reference.update(history, Formula.rev_compose(f, _));
     refresh()
   }
 }
@@ -527,11 +575,13 @@ function page() {
    WBootstrap.Layout.fixed(
       <div onready={function(_){Display.install()}}>
       <h1>My cube</h1>
-      <div id=cube />
+      <div id="cubies" />
+      <h2>Faces</h2>
+      <div id="facelets" />
       <h2>History</h2>
-      <div id=history/>
+      <div id="history" />
       <h2>Commands</h2>
-      <div id=commands />
+      <div id="commands" />
       </div>
    )
 }
