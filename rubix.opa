@@ -383,16 +383,20 @@ max_distance = max_corner_distance + max_edge_distance
 function cubies_to_html(Cube.t cube) {
   <div>
     {if (cube == initial) WBootstrap.Label.make("Solved", {success}) else WBootstrap.Label.make("Scrambled: {Cube.distance(initial, cube)}/{Cube.max_distance}", {important})}
-    <h2>Corners</h2>
-    <table>
+    {WBootstrap.Grid.row([
+      {span:6, offset:none, content:<h2>Corners</h2>},
+      {span:6, offset:none, content:<h2>Edges</h2>}])}
+    {WBootstrap.Grid.row([
+      {span:6, offset:none, content:
+        <table>
     {List.rev(Map.fold(function(i, v, list(xhtml) lh) {
         [ <tr><td>{i}</td><td>{Corner.color_to_html(get_corner(initial,i))}</td><td>{Corner.name_to_html(v)}</td></tr> | lh]}, cube.corners, []))}
-    </table>
-    <h2>Edges</h2>
-    <table>
+       </table>},
+      {span:6, offset:none, content:
+       <table>
     {List.rev(Map.fold(function(i, e, list(xhtml) lh) {
         [ <tr><td>{i}</td><td>{Edge.color_to_html(get_edge(initial,i))}</td><td>{Edge.name_to_html(e)}</td></tr> | lh]}, cube.edges, []))}
-    </table>
+      </table>}])}
   </div>
 }
 
@@ -522,7 +526,7 @@ client module Display {
     }
     function mkface(f) {    // TODO use a table ?
       function fid(n) { facelet_id({~f, ~n}) }
-      function td(n) { <td class=square id={fid(n)}></td> }
+      function td(n) { <td class=square id={fid(n)}>{Facelet.to_string({~f, ~n})}</td> }
       <h3>{Face.to_string(f)}</h3>
       <table>
         <tr>{list(xhtml) [td(1), td(2), td(3)]}</tr>
@@ -531,7 +535,17 @@ client module Display {
       </table>
     }
     #commands = <div>{List.map(mkcmd, Move.simple_moves)}</div>
-    #facelets = <div>{List.map(mkface, Face.all)}</div>
+    #facelets =
+       <div>
+  {WBootstrap.Grid.row([{span:3, offset:some(3), content:mkface({up})}])}
+  {WBootstrap.Grid.row([
+     {span:3, offset:none, content:mkface({left})},
+     {span:3, offset:none, content:mkface({front})},
+     {span:3, offset:none, content:mkface({right})},
+     {span:3, offset:none, content:mkface({back})}
+])}
+  {WBootstrap.Grid.row([{span:3, offset:some(3), content:mkface({down})}])}
+       </div>
     refresh();
     List.iter(function(f) { set_facelet_color({~f, n:5}, f)}, Face.all)
   }
