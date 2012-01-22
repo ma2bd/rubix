@@ -522,7 +522,10 @@ client module Display {
 
   function install() {
     function mkcmd(m) {
-      WBootstrap.Button.make({button: Move.to_html(m), callback:function(_){apply_move(m)}}, [])
+      <td>{WBootstrap.Button.make({button: Move.to_html(m), callback:function(_){apply_move(m)}}, []) |> Xhtml.update_class("formula", _)}</td>
+    }
+    function mksimulatecmd(m) {
+      <td>{WBootstrap.Label.make("", {notice}) |> Xhtml.add_id(some("id_simu_{Move.to_string(m)}"), _)}</td>
     }
     function mkface(f) {    // TODO use a table ?
       function fid(n) { facelet_id({~f, ~n}) }
@@ -534,7 +537,10 @@ client module Display {
         <tr>{list(xhtml) [td(7), td(8), td(9)]}</tr>
       </table>
     }
-    #commands = <div>{List.map(mkcmd, Move.simple_moves)}</div>
+    #commands = <table>
+       <tr>{List.map(mkcmd, Move.simple_moves)}</tr>
+       <tr>{List.map(mksimulatecmd, Move.simple_moves)}</tr>
+       </table>
     #facelets =
        <div>
   {WBootstrap.Grid.row([{span:3, offset:some(3), content:mkface({up})}])}
@@ -565,11 +571,16 @@ client module Display {
     set_facelet_color({f:f2, n:n2}, c2);
   }
 
+  function refresh_simulate_cmd(m) {
+     #{"id_simu_{Move.to_string(m)}"} = <>{Cube.distance(Cube.initial, Cube.apply_move(Reference.get(cube), m))}</>
+  }
+
   function refresh() {
     #cubies = Cube.cubies_to_html(Reference.get(cube));
     Map.iter(refresh_corner_facelets, Reference.get(cube).corners);
     Map.iter(refresh_edge_facelets, Reference.get(cube).edges);
-    #history = Formula.to_html(List.rev(Reference.get(history)))
+    #history = Formula.to_html(List.rev(Reference.get(history)));
+    List.iter(refresh_simulate_cmd, Move.simple_moves)
   }
 
   function apply_move(m) {
@@ -593,7 +604,7 @@ function page() {
       <h2>Faces</h2>
       <div id="facelets" />
       <h2>History</h2>
-      <div id="history" />
+      <code id="history" />
       <h2>Commands</h2>
       <div id="commands" />
       </div>
