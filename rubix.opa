@@ -242,6 +242,7 @@ function permutations((x,y,z)) {
 
 }
 
+// TODO: factorize code with Corners??
 type Edge.t = (Face.t, Face.t)
 
 module Edge {
@@ -382,13 +383,57 @@ function complexity(Cube.t cube) {
   Cube.distance(Cube.initial, cube)
 }
 
+function apply_delta(Cube.t cube, Cube.t cube2, Cube.t cube1) {
+  d = Delta.make(cube1, cube2)
+  Delta.apply(cube, d)
+}
+
+function compose(Cube.t cube1, Cube.t cube2) {
+  apply_delta(cube1, cube2, initial)
+}
 }
 
 type Facelet.t = {Face.t f, int n}
 
-type Facelet.maps = {
-   map(Corner.t, (int,int,int)) corners,
-   map(Edge.t, (int,int)) edges
+type Delta.t('a,'b) =  {
+   map(('a,'a,'a), ('b,'b,'b)) corners,
+   map(('a,'a), ('b,'b)) edges
+}
+
+type GCube.t('a) =  {
+   intmap(('a,'a,'a)) corners,
+   intmap(('a,'a)) edges
+}
+
+module Delta {
+
+function Delta.t('a, 'b) make(GCube.t('a) gcube1, GCube.t('b) gcube2) {
+  function add_corner_values(('a, 'a, 'a) c0, ('b,'b,'b) n0, m0) {
+    List.fold2(Map.add, Corner.permutations(c0), Corner.permutations(n0), m0)
+  }
+  function add_edge_values(('a, 'a) e0, ('b,'b) n0, m0) {
+    List.fold2(Map.add, Edge.permutations(e0), Edge.permutations(n0), m0)
+  }
+  corners =
+    Map.fold(   //TODO: use some Map.fold2
+      function(i, x, m) {
+         add_corner_values(x, map_unsafe_get(i, gcube2.corners, "Invalid corner table"), m)
+      }, gcube1.corners, Map.empty)
+  edges =
+    Map.fold(   //TODO: use some Map.fold2
+      function(i, x, m) {
+         add_edge_values(x, map_unsafe_get(i, gcube2.edges, "Invalid corner table"), m)
+      }, gcube1.edges, Map.empty)
+  { ~corners, ~edges }
+}
+
+function GCube.t('b) apply(GCube.t('a) gcube1, Delta.t('a, 'b) delta) {
+  {
+    corners:Map.map(map_unsafe_get(_, delta.corners, "Invalid delta on corners"), gcube1.corners),
+    edges:Map.map(map_unsafe_get(_, delta.edges, "Invalid delta on edges"), gcube1.edges)
+  }
+}
+
 }
 
 module Facelet {
@@ -420,31 +465,14 @@ numbers =
     edges: list_to_intmap([ e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12 ])
   }
 
-Facelet.maps maps =
-  function add_corner_facelets(Corner.t c0, (int,int,int) n0, m0) {
-    List.fold2(Map.add, Corner.permutations(c0), Corner.permutations(n0), m0)
-  }
-  function add_edge_facelets(Edge.t e0, (int,int) n0, m0) {
-    List.fold2(Map.add, Edge.permutations(e0), Edge.permutations(n0), m0)
-  }
-  corners =
-    Map.fold(   //TODO: use some Map.fold2
-      function(i, x, m) {
-         add_corner_facelets(x, map_unsafe_get(i, numbers.corners, "Invalid corner table"), m)
-      }, Cube.initial.corners, Map.empty)
-  edges =
-    Map.fold(   //TODO: use some Map.fold2
-      function(i, x, m) {
-         add_edge_facelets(x, map_unsafe_get(i, numbers.edges, "Invalid corner table"), m)
-      }, Cube.initial.edges, Map.empty)
-  { ~corners, ~edges }
+Delta.t(Face.t, int) number_mapping = Delta.make(Cube.initial, numbers)
 
 function corner_numbers(Corner.t c) {
-  map_unsafe_get(c, maps.corners, "Invalid corner map")
+  map_unsafe_get(c, number_mapping.corners, "Invalid corner map")
 }
 
 function edge_numbers(Edge.t e) {
-  map_unsafe_get(e, maps.edges, "Invalid edge map")
+  map_unsafe_get(e, number_mapping.edges, "Invalid edge map")
 }
 
 nums = [1, 2, 3, 4, 5, 6, 7, 8, 9]
