@@ -35,10 +35,10 @@ client module Display {
 
   function install() {
     function mkcmd(m) {
-      <td>{WBootstrap.Button.make({button: Move.to_html(m), callback:function(_){CubeState.apply_move(m)}}, []) |> Xhtml.update_class("formula", _)}</td>
+      <td style="text-align: center">{WBootstrap.Button.make({button: Move.to_html(m), callback:function(_){CubeState.apply_move(m)}}, []) |> Xhtml.update_class("formula", _)}</td>
     }
     function mksimulatecmd(m) {
-      <td>{WBootstrap.Label.make("", {notice}) |> Xhtml.add_id(some("id_simu_{Move.to_string(m)}"), _)}</td>
+      <td style="text-align: center">{WBootstrap.Label.make("", {notice}) |> Xhtml.add_id(some("id_simu_{Move.to_string(m)}"), _)}</td>
     }
     function mkface(f) {    // TODO use a table ?
       function fid(n) { facelet_id({~f, ~n}) }

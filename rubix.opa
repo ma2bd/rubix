@@ -1,5 +1,5 @@
 
-/** Rubix elementary operations and data structures */
+/** Elementary operations and data structures related to one Rubik's cube */
 
 type Face.t = {up}
            or {down}
@@ -240,6 +240,10 @@ function permutations((x,y,z)) {
   [(x,y,z), (x,z,y), (y,z,x), (y,x,z), (z,x,y), (z,y,x)]
 }
 
+function even_permutations((x,y,z)) {
+  [(x,y,z), (y,z,x), (z,x,y)]
+}
+
 }
 
 // TODO: factorize code with Corners??
@@ -409,7 +413,7 @@ module Delta {
 
 function Delta.t('a, 'b) make(GCube.t('a) gcube1, GCube.t('b) gcube2) {
   function add_corner_values(('a, 'a, 'a) c0, ('b,'b,'b) n0, m0) {
-    List.fold2(Map.add, Corner.permutations(c0), Corner.permutations(n0), m0)
+    List.fold2(Map.add, Corner.even_permutations(c0), Corner.even_permutations(n0), m0)
   }
   function add_edge_values(('a, 'a) e0, ('b,'b) n0, m0) {
     List.fold2(Map.add, Edge.permutations(e0), Edge.permutations(n0), m0)
