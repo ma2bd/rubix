@@ -142,6 +142,6 @@ Server.start(
   Server.http,
   [ {resources: @static_resource_directory("resources")}
   , {register: ["resources/rubix.css"]}
-  , {title: "Opa rubix", page:page }
+  , {title: "Rubix, cube explorer", page:page }
   ]
 )
