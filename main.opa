@@ -35,10 +35,7 @@ client module Display {
 
   function install() {
     function mkcmd(m) {
-      <td style="text-align: center">{WBootstrap.Button.make({button: Move.to_html(m), callback:function(_){CubeState.apply_move(m)}}, []) |> Xhtml.update_class("formula", _)}</td>
-    }
-    function mksimulatecmd(m) {
-      <td style="text-align: center">{WBootstrap.Label.make("", {notice}) |> Xhtml.add_id(some("id_simu_{Move.to_string(m)}"), _)}</td>
+      <span style="text-align: center">{WBootstrap.Button.make({button: Move.to_html(m), callback:function(_){CubeState.apply_move(m)}}, []) |> Xhtml.update_class("formula", _)}</span>
     }
     function mkface(f) {    // TODO use a table ?
       function fid(n) { facelet_id({~f, ~n}) }
@@ -50,10 +47,9 @@ client module Display {
         <tr>{list(xhtml) [td(7), td(8), td(9)]}</tr>
       </table>
     }
-    #commands = <table>
-       <tr>{List.map(mkcmd, Move.simple_moves)}</tr>
-       <tr>{List.map(mksimulatecmd, Move.simple_moves)}</tr>
-       </table>
+    #commands = <div>
+       {List.map(mkcmd, Move.simple_moves)}
+       </div><p/>
     #facelets =
        <div>
   {WBootstrap.Grid.row([{span:3, offset:some(3), content:mkface({up})}])}
