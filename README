@@ -1,0 +1,17 @@
+== Rubix, a cube explorer in Opa ==
+
+Currently just a simple program to explore cube moves and positions.
+Meant to evolve into an interactive/batch solver.
+
+REQUIREMENTS
+The Opa compiler must be installed on your system (See http://opalang.org or https://github.com/MLstate/opalang)
+
+BUILDING
+ make
+
+LAUNCHING
+ ./main.exe
+(launches on port 8080)
+
+or
+ ./main.exe -p nnnn
